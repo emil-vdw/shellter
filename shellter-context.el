@@ -282,7 +282,23 @@ Optional BASE-NAME and PURPOSE override detected values."
                                 (shellter-context-get-sessions context)))
          (project-root (when (fboundp 'project-current)
                         (when-let ((proj (project-current)))
-                          (project-root proj)))))
+                          ;; Handle different Emacs versions and project.el implementations
+                          (cond
+                           ;; Try calling project-root as a function if it exists
+                           ((fboundp 'project-root)
+                            (project-root proj))
+                           ;; For vc projects in older Emacs versions, extract root from data structure
+                           ((and (consp proj) (eq (car proj) 'vc))
+                            ;; In Emacs 28 and earlier: (vc . root)
+                            (cdr proj))
+                           ;; For transient projects
+                           ((and (consp proj) (eq (car proj) 'transient))
+                            (cdr proj))
+                           ;; Fallback: try to use vc-root-dir if available
+                           ((fboundp 'vc-root-dir)
+                            (ignore-errors (vc-root-dir default-directory)))
+                           ;; Last resort: nil
+                           (t nil))))))
     (shellter-create-naming-context
      :base-name base-name
      :directory default-directory
