@@ -1,12 +1,11 @@
 # Shellter
 
-Perspective-aware eshell session management for Emacs.
+Eshell session management for Emacs.
 
 ## Overview
 
 Shellter enhances your Emacs workflow by providing better integration between eshell and perspective.el. It addresses common pain points when working with multiple eshell sessions across different projects:
 
-- **Perspective-aware eshell invocation** - Each perspective maintains its own set of eshell sessions
 - **Named sessions** - Create and manage multiple named eshell sessions within each perspective
 - **Smart switching** - Easily switch between eshell sessions with descriptive names
 

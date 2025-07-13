@@ -7,14 +7,13 @@
 ;;; Code:
 
 (require 'ert)
-(require 'f)
 
 ;; Set up load path
 (defvar shellter-test-path
-  (f-dirname (f-this-file)))
+  (file-name-directory (or load-file-name buffer-file-name)))
 
 (defvar shellter-root-path
-  (f-parent shellter-test-path))
+  (expand-file-name ".." shellter-test-path))
 
 (add-to-list 'load-path shellter-root-path)
 
@@ -22,18 +21,20 @@
 (require 'shellter)
 
 ;; Test utilities
-(defmacro shellter-test-with-perspective (&rest body)
-  "Execute BODY with a temporary perspective setup."
-  `(let ((persp-mode t)
-         (perspectives-hash (make-hash-table :test 'equal :size 10)))
-     ,@body))
+(defmacro shellter-test-with-context (context-expr &rest body)
+  "Execute BODY with a specific CONTEXT as the current context."
+  (let ((context-var (make-symbol "context")))
+    `(let* ((,context-var ,context-expr)
+            (shellter-context-provider (lambda () ,context-var)))
+       ,@body)))
 
 (defun shellter-test-cleanup ()
   "Clean up after tests."
   ;; Kill any test eshell buffers
   (dolist (buffer (buffer-list))
-    (when (string-match-p "\\*eshell:" (buffer-name buffer))
-      (kill-buffer buffer))))
+    (when (and (buffer-name buffer)
+               (string-match-p "\\*eshell:" (buffer-name buffer)))
+      (ignore-errors (kill-buffer buffer)))))
 
 (provide 'test-helper)
 ;;; test-helper.el ends here

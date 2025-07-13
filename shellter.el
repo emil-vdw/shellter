@@ -26,68 +26,104 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'eshell)
-(require 'perspective)
+
+(require 'shellter-context)
+
+;;; Customization
 
 (defgroup shellter nil
-  "Perspective-aware eshell session management."
+  "Shell terminal session management for Emacs."
   :group 'eshell
   :prefix "shellter-")
 
-(defcustom shellter-default-session-name "main"
-  "Default name for eshell sessions."
-  :type 'string
-  :group 'shellter)
+;;; Utility Functions
 
-(defcustom shellter-session-name-format "*eshell: %s [%s]*"
-  "Format string for eshell buffer names.
-First %s is the perspective name, second %s is the session name."
-  :type 'string
-  :group 'shellter)
+(defun shellter-context-p (object)
+  "Return non-nil if OBJECT is a shellter context."
+  (cl-typep object 'shellter-context))
 
-(defvar shellter--sessions (make-hash-table :test 'equal)
-  "Hash table mapping perspective names to their eshell sessions.")
+(defun shellter-create-session (name &optional buffer)
+  "Create a new shellter session with NAME and optional BUFFER."
+  (unless buffer
+    (let ((buffer-name (format "*eshell:%s*" name)))
+      (setq buffer (get-buffer-create buffer-name))
+      (with-current-buffer buffer
+        (unless (eq major-mode 'eshell-mode)
+          (eshell-mode)))))
+  (make-shellter-session :name name :buffer buffer))
+
+(defun shellter-session-live-p (session)
+  "Check if SESSION's buffer is still alive."
+  (and (shellter-session-p session)
+       (shellter-session-buffer session)
+       (buffer-live-p (shellter-session-buffer session))))
+
+(defun shellter-cleanup-dead-sessions (context)
+  "Remove all sessions with dead buffers from CONTEXT."
+  (dolist (session (shellter-context-get-sessions context))
+    (unless (shellter-session-live-p session)
+      (shellter-context-remove-session context session))))
+
+(defun shellter-switch-to-session (session)
+  "Switch to SESSION's buffer using display-buffer."
+  (when (shellter-session-live-p session)
+    (switch-to-buffer-other-window (shellter-session-buffer session))))
+
+(defun shellter-read-session-name (sessions)
+  "Read a session name from SESSIONS using completion.
+Returns the selected name. Non-matching input is allowed."
+  (let ((names (mapcar #'shellter-session-name sessions)))
+    (completing-read "Shellter session: " names nil nil)))
+
+(defun shellter-get-or-create-session (context name &optional purpose)
+  "Get existing session by NAME or create new one in CONTEXT.
+Optional PURPOSE is set on new sessions."
+  (let ((session (shellter-context-find-session context name)))
+    (unless session
+      ;; Create new session with the given name, not auto-generated
+      (setq session (shellter-create-session name))
+      (when purpose
+        (setf (shellter-session-purpose session) purpose))
+      (shellter-context-add-session context session))
+    session))
 
 ;;;###autoload
-(define-minor-mode shellter-mode
-  "Toggle perspective-aware eshell session management."
-  :global t
-  :group 'shellter
-  (if shellter-mode
-      (message "Shellter mode enabled")
-    (message "Shellter mode disabled")))
+(defun shellter (&optional arg purpose)
+  "Open or switch to a shellter session.
+With prefix ARG, always create a new session.
+Optional PURPOSE can be provided when called programmatically."
+  (interactive "P")
 
-(defun shellter--perspective-name ()
-  "Get the current perspective name."
-  (if (bound-and-true-p persp-mode)
-      (persp-current-name)
-    "default"))
+  ;; Clean up dead sessions first
+  (shellter-cleanup-dead-sessions (shellter-get-current-context))
+  (let* ((context (shellter-get-current-context))
+         (sessions (shellter-context-get-sessions context))
+         (session
+          (cond
+           ;; With prefix arg, always create new
+           (arg
+            (let ((name (shellter-generate-session-name)))
+              (setq session (shellter-get-or-create-session context name purpose))))
 
-(defun shellter--make-buffer-name (session-name)
-  "Generate buffer name for SESSION-NAME in current perspective."
-  (format shellter-session-name-format
-          (shellter--perspective-name)
-          session-name))
+           ;; No sessions exist, create one
+           ((null sessions)
+            (let ((name (shellter-generate-session-name)))
+              (setq session (shellter-get-or-create-session context name purpose))))
 
-(defun shellter-list-sessions ()
-  "List all eshell sessions in the current perspective."
-  (interactive)
-  ;; Placeholder for future implementation
-  (message "Session listing not yet implemented"))
+           ;; Single session exists, switch to it
+           ((= 1 (length sessions))
+            (setq session (car sessions)))
 
-;;;###autoload
-(defun shellter-new-session (session-name)
-  "Create a new named eshell session with SESSION-NAME."
-  (interactive "sSession name: ")
-  ;; Placeholder for future implementation
-  (message "Creating new session: %s" session-name))
+           ;; Multiple sessions, prompt for selection
+           (t
+            (let ((name (shellter-read-session-name sessions)))
+              (setq session (shellter-get-or-create-session context name purpose)))))))
 
-;;;###autoload
-(defun shellter-switch-session ()
-  "Switch to an existing eshell session in the current perspective."
-  (interactive)
-  ;; Placeholder for future implementation
-  (message "Session switching not yet implemented"))
+    ;; Switch to the session
+    (shellter-switch-to-session session)))
 
 (provide 'shellter)
+
 ;;; shellter.el ends here
