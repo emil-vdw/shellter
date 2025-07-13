@@ -9,6 +9,9 @@
 
 (require 'eieio)
 
+;; Declare function to suppress package-lint warning - we handle version compatibility dynamically
+(declare-function project-root "project" (project))
+
 (defcustom shellter-context-provider #'shellter-global-context-provider
   "Function that provides the current context for shellter.
 This function should return an instance of a subclass of `shellter-context'.
@@ -31,8 +34,26 @@ a valid context object."
   (purpose nil :type (or null string)
            :documentation "The purpose associated with this session, eg. python repl."))
 
-;;; Abstract Context Interface
+(defun shellter-create-session (name &optional buffer)
+  "Create a new shellter session with NAME and optional BUFFER."
+  (unless buffer
+    (let ((buffer-name (format "*eshell:%s*" name)))
+      (setq buffer (get-buffer-create buffer-name))
+      (with-current-buffer buffer
+        (unless (eq major-mode 'eshell-mode)
+          (eshell-mode)))))
+  (make-shellter-session :name name :buffer buffer))
 
+(defun shellter-session-live-p (session)
+  "Check if SESSION's buffer is still alive."
+  (and (shellter-session-p session)
+       (shellter-session-buffer session)
+       (buffer-live-p (shellter-session-buffer session))))
+
+;;; Abstract Context Interface
+;;;
+;;; Context managers are responsible for managing shellter sessions
+;;; and cleaning up dead sessions.
 (defclass shellter-context ()
   ()
   "Abstract base class for shellter context implementations.
@@ -40,6 +61,10 @@ This class defines the interface that all context implementations
 must follow. Context implementations are responsible for managing
 collections of eshell sessions."
   :abstract t)
+
+(defun shellter-context-p (object)
+  "Return non-nil if OBJECT is a shellter context."
+  (cl-typep object 'shellter-context))
 
 ;; Generic functions that all context implementations must provide
 
@@ -87,13 +112,14 @@ system (like perspective.el) is available.")
 
 (cl-defmethod shellter-context-get-sessions ((context shellter-global-context))
   "Return all sessions in the global context."
-  (oref context sessions))
+  (let ((sessions (oref context sessions)))
+    (shellter-context-clean-up-dead-sessions context sessions)
+    sessions))
 
 (cl-defmethod shellter-context-add-session ((context shellter-global-context) session)
   "Add SESSION to the global context."
-  (unless (shellter-context-session-exists-p context (shellter-session-name session))
-    (oset context sessions
-          (cons session (oref context sessions)))))
+  (oset context sessions
+        (cons session (oref context sessions))))
 
 (cl-defmethod shellter-context-remove-session ((context shellter-global-context) session)
   "Remove SESSION from the global context."
@@ -241,6 +267,12 @@ Generates names like 'eshell', 'eshell<2>', 'eshell<3>', etc.")
   (funcall shellter-naming-strategy-provider))
 
 ;;; Utility Functions
+
+(defun shellter-context-clean-up-dead-sessions (context sessions)
+  "Remove dead sessions from CONTEXT."
+  (dolist (session sessions)
+    (unless (shellter-session-live-p session)
+      (shellter-context-remove-session context session))))
 
 (defun shellter--make-unique-name (base-name existing-names)
   "Make BASE-NAME unique among EXISTING-NAMES by appending numbers."

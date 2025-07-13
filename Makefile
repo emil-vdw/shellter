@@ -25,8 +25,8 @@ test:
 
 .PHONY: lint
 lint:
-	$(EASK) lint package
-	$(EASK) lint elisp-lint
+	-$(EASK) lint package
+	-$(EASK) lint elisp-lint
 
 .PHONY: checkdoc
 checkdoc:

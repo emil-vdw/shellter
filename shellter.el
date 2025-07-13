@@ -40,32 +40,6 @@
 
 ;;; Utility Functions
 
-(defun shellter-context-p (object)
-  "Return non-nil if OBJECT is a shellter context."
-  (cl-typep object 'shellter-context))
-
-(defun shellter-create-session (name &optional buffer)
-  "Create a new shellter session with NAME and optional BUFFER."
-  (unless buffer
-    (let ((buffer-name (format "*eshell:%s*" name)))
-      (setq buffer (get-buffer-create buffer-name))
-      (with-current-buffer buffer
-        (unless (eq major-mode 'eshell-mode)
-          (eshell-mode)))))
-  (make-shellter-session :name name :buffer buffer))
-
-(defun shellter-session-live-p (session)
-  "Check if SESSION's buffer is still alive."
-  (and (shellter-session-p session)
-       (shellter-session-buffer session)
-       (buffer-live-p (shellter-session-buffer session))))
-
-(defun shellter-cleanup-dead-sessions (context)
-  "Remove all sessions with dead buffers from CONTEXT."
-  (dolist (session (shellter-context-get-sessions context))
-    (unless (shellter-session-live-p session)
-      (shellter-context-remove-session context session))))
-
 (defun shellter-switch-to-session (session)
   "Switch to SESSION's buffer using display-buffer."
   (when (shellter-session-live-p session)
@@ -97,7 +71,6 @@ Optional PURPOSE can be provided when called programmatically."
   (interactive "P")
 
   ;; Clean up dead sessions first
-  (shellter-cleanup-dead-sessions (shellter-get-current-context))
   (let* ((context (shellter-get-current-context))
          (sessions (shellter-context-get-sessions context))
          (session
