@@ -184,17 +184,23 @@ Optional PURPOSE can be provided when called programmatically."
             (let ((name (shellter-generate-session-name)))
               (shellter-get-or-create-session context name purpose)))
 
-           ;; Single session exists, switch to it
+           ;; Single session exists
            ((= 1 (length sessions))
-            (car sessions))
+            (let ((single-session (car sessions)))
+              ;; Check if we're already in this session
+              (if (and (shellter-session-live-p single-session)
+                       (eq (current-buffer) (shellter-session-buffer single-session)))
+                  (user-error "Already in the only shellter session")
+                single-session)))
 
            ;; Multiple sessions, prompt for selection
            (t
             (let ((name (shellter-read-session sessions)))
               (shellter-get-or-create-session context name purpose))))))
 
-    ;; Switch to the session
-    (shellter-switch-to-session session)))
+    ;; Switch to the session if we have one
+    (when session
+      (shellter-switch-to-session session))))
 
 (provide 'shellter)
 
