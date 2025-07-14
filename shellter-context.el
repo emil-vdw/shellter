@@ -365,9 +365,7 @@ Optional BASE-NAME provides a hint for the name.
 Optional PURPOSE describes the session's intended use."
   (let* ((strategy (shellter-get-naming-strategy))
          (context (shellter-get-current-naming-context base-name purpose)))
-    (mapcar (lambda (name)
-              (shellter-validate-name strategy name context))
-            (shellter-generate-suggestions strategy context))))
+    (shellter-generate-suggestions strategy context)))
 
 (provide 'shellter-context)
 ;;; shellter-context.el ends here
