@@ -102,6 +102,7 @@ workspace-specific eshell session management.")
 (defvar shellter-perspective--context-instance nil
   "The singleton instance of the perspective context.")
 
+;;;###autoload
 (defun shellter-perspective-context-provider ()
   "Return the perspective context instance for shellter.
 This function is meant to be used as the value of `shellter-context-provider'."
@@ -109,23 +110,6 @@ This function is meant to be used as the value of `shellter-context-provider'."
     (setq shellter-perspective--context-instance
           (make-instance 'shellter-perspective-context)))
   shellter-perspective--context-instance)
-
-;;; Public API
-
-;;;###autoload
-(defun shellter-perspective-enable ()
-  "Enable perspective integration for shellter."
-  (interactive)
-  (setq shellter-context-provider #'shellter-perspective-context-provider)
-  (message "Shellter perspective integration enabled"))
-
-;;;###autoload
-(defun shellter-perspective-disable ()
-  "Disable perspective integration for shellter."
-  (interactive)
-  (setq shellter-context-provider #'shellter-global-context-provider)
-  (setq shellter-perspective--context-instance nil)
-  (message "Shellter perspective integration disabled"))
 
 (provide 'shellter-perspective)
 
