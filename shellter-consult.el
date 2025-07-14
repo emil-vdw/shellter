@@ -28,6 +28,9 @@
 
 ;;; Consult integration
 
+;; Declare additional consult internals we need
+(defvar consult--buffer-display)
+
 (defun shellter-read-session-consult (sessions &optional prompt initial-input)
   "Read a session name from SESSIONS using `consult--read'.
 PROMPT defaults to \"Shellter session: \".
@@ -35,9 +38,18 @@ INITIAL-INPUT is passed to `consult--read'.
 Returns the selected name.  Non-matching input is allowed.
 
 This function provides enhanced features when consult is available:
-- Live preview of session buffers"
+- Live preview of session buffers
+- Respects `shellter-switch-buffer-behaviour' during preview"
   (let* ((names (mapcar #'shellter-session-name sessions))
          (prompt (or prompt "Shellter session: "))
+         ;; Determine display function based on configuration
+         (display-fn (let ((is-shellter-buf (shellter-buffer-p)))
+                       (pcase shellter-switch-buffer-behaviour
+                         ('same-window #'switch-to-buffer)
+                         ('other-window #'switch-to-buffer-other-window)
+                         ('smart (if is-shellter-buf
+                                     #'switch-to-buffer
+                                   #'switch-to-buffer-other-window)))))
          ;; Create state function for preview
          (state (let ((orig-buf (current-buffer))
                       (orig-win (selected-window)))
@@ -51,13 +63,15 @@ This function provides enhanced features when consult is available:
                                                        :test #'string=))
                                      (buffer (shellter-session-buffer session)))
                            (when (buffer-live-p buffer)
-                             (consult--buffer-action buffer)))))
+                             ;; Use consult's buffer display mechanism with our chosen function
+                             (let ((consult--buffer-display display-fn))
+                               (consult--buffer-action buffer))))))
                       ('return
                        ;; Restore original state
                        (when (window-live-p orig-win)
                          (select-window orig-win))
                        (when (buffer-live-p orig-buf)
-                         (set-buffer orig-buf))))))))
+                         (switch-to-buffer orig-buf 'norecord))))))))
     (consult--read names
                    :prompt prompt
                    :category 'shellter-session
