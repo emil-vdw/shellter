@@ -19,6 +19,7 @@
 ;; - Named eshell sessions within perspectives
 ;; - Easy switching between multiple eshell instances
 ;; - Configurable session selection with consult support
+;; - Configurable buffer switching behaviour
 ;;
 ;; To use shellter, add the following to your Emacs configuration:
 ;;
@@ -44,6 +45,19 @@
 ;; The consult integration (available in shellter-consult.el) provides:
 ;; - Live preview of session buffers
 ;; - Better completion UI with vertical candidates
+;;
+;; Buffer Switching Behaviour:
+;;
+;; You can customize how shellter switches to session buffers:
+;;
+;;   ;; Always switch in other window (default)
+;;   (setq shellter-switch-buffer-behaviour 'other-window)
+;;
+;;   ;; Always switch in same window
+;;   (setq shellter-switch-buffer-behaviour 'same-window)
+;;
+;;   ;; Smart switching - same window if in shellter buffer, otherwise other window
+;;   (setq shellter-switch-buffer-behaviour 'smart)
 
 ;;; Code:
 
@@ -81,12 +95,45 @@ Users can provide custom functions following the same signature."
   :type 'function
   :group 'shellter)
 
+(defcustom shellter-switch-buffer-behaviour 'other-window
+  "Controls how shellter switches to session buffers.
+
+Available options:
+  - `other-window': Always switch in other window (default)
+  - `same-window': Always switch in the same window
+  - `smart': Switch in same window if current buffer is a shellter
+    session, otherwise switch in other window"
+  :type '(choice (const :tag "Other window" other-window)
+                 (const :tag "Same window" same-window)
+                 (const :tag "Smart" smart))
+  :group 'shellter)
+
 ;;; Utility Functions
 
+(defun shellter-buffer-p (&optional buffer)
+  "Return non-nil if BUFFER is a shellter session buffer.
+BUFFER defaults to the current buffer."
+  (let ((buffer (or buffer (current-buffer)))
+        (context (shellter-get-current-context)))
+    (cl-some (lambda (session)
+               (and (shellter-session-live-p session)
+                    (eq buffer (shellter-session-buffer session))))
+             (shellter-context-get-sessions context))))
+
 (defun shellter-switch-to-session (session)
-  "Switch to SESSION's buffer using `display-buffer'."
+  "Switch to SESSION's buffer using the configured behaviour.
+The behaviour is controlled by `shellter-switch-buffer-behaviour'."
   (when (shellter-session-live-p session)
-    (switch-to-buffer-other-window (shellter-session-buffer session))))
+    (let ((buffer (shellter-session-buffer session)))
+      (pcase shellter-switch-buffer-behaviour
+        ('same-window
+         (switch-to-buffer buffer))
+        ('other-window
+         (switch-to-buffer-other-window buffer))
+        ('smart
+         (if (shellter-buffer-p)
+             (switch-to-buffer buffer)
+           (switch-to-buffer-other-window buffer)))))))
 
 (defun shellter-read-session-default (sessions &optional prompt initial-input)
   "Read a session name from SESSIONS using `completing-read'.
