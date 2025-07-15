@@ -89,15 +89,34 @@ Available options:
 
 ;;; Utility Functions
 
+(defvar-local shellter--session nil
+  "The shellter session associated with this buffer.")
+
+(defun shellter--cleanup-session-on-kill ()
+  "Clean up shellter session when its buffer is killed.
+This function is added to `kill-buffer-hook' for shellter buffers."
+  (when shellter--session
+    (let* ((context (shellter-get-current-context))
+           (naming-strategy (shellter-get-naming-strategy)))
+      ;; Remove the session from the context
+      (shellter-context-remove-session context shellter--session)
+
+      ;; Update names of remaining sessions
+      (let* ((remaining-sessions (shellter-context-get-sessions context))
+             (naming-context (shellter-get-current-naming-context)))
+        (dolist (session remaining-sessions)
+          (when-let ((new-name (shellter-update-name naming-strategy
+                                                     session
+                                                     naming-context)))
+            (setf (shellter-session-name session) new-name)))))))
+
 (defun shellter-buffer-p (&optional buffer)
   "Return non-nil if BUFFER is a shellter session buffer.
 BUFFER defaults to the current buffer."
-  (let ((buffer (or buffer (current-buffer)))
-        (context (shellter-get-current-context)))
-    (cl-some (lambda (session)
-               (and (shellter-session-live-p session)
-                    (eq buffer (shellter-session-buffer session))))
-             (shellter-context-get-sessions context))))
+  (with-current-buffer (or buffer (current-buffer))
+    (and (boundp 'shellter--session)
+         shellter--session
+         (shellter-session-p shellter--session))))
 
 (defun shellter-switch-to-session (session)
   "Switch to SESSION's buffer using the configured behaviour.

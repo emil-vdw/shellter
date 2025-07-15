@@ -59,11 +59,6 @@ workspace-specific eshell session management.")
 
 (cl-defmethod shellter-context-get-sessions ((context shellter-perspective-context))
   "Return all sessions associated with the current perspective."
-  ;; Clean up dead sessions first
-  (setq shellter-perspective--all-sessions
-        (cl-remove-if-not #'shellter-session-live-p
-                          shellter-perspective--all-sessions))
-
   ;; Get buffers in current perspective
   (let ((persp-buffers (persp-buffers (persp-curr))))
     ;; Filter sessions whose buffers are in the current perspective

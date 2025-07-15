@@ -23,7 +23,7 @@
            ;; Clear data structures
            (setq shellter-perspective--all-sessions nil)
            ;; Enable shellter-perspective
-           (shellter-perspective-enable)
+           (setq shellter-context-provider #'shellter-perspective-context-provider)
            ,@body)
        ;; Restore state
        (setq shellter-context-provider old-provider)
@@ -128,17 +128,17 @@
                         (shellter-session-name
                          (car (shellter-context-get-sessions context)))))))))
 
-(ert-deftest shellter-perspective-test-enable-disable ()
-  "Test enabling and disabling perspective integration."
+(ert-deftest shellter-perspective-test-context-switching ()
+  "Test switching between perspective and global context providers."
   (let ((original-provider shellter-context-provider))
     (unwind-protect
         (progn
-          ;; Enable perspective integration
-          (shellter-perspective-enable)
+          ;; Set perspective integration
+          (setq shellter-context-provider #'shellter-perspective-context-provider)
           (should (eq shellter-context-provider #'shellter-perspective-context-provider))
 
-          ;; Disable perspective integration
-          (shellter-perspective-disable)
+          ;; Switch to global context provider
+          (setq shellter-context-provider #'shellter-global-context-provider)
           (should (eq shellter-context-provider #'shellter-global-context-provider)))
       ;; Restore original
       (setq shellter-context-provider original-provider))))

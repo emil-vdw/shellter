@@ -12,6 +12,9 @@
 ;; Declare function to suppress package-lint warning - we handle version compatibility dynamically
 (declare-function project-root "project" (project))
 
+;; Forward declare cleanup function from shellter.el
+(declare-function shellter--cleanup-session-on-kill "shellter" ())
+
 (defcustom shellter-context-provider #'shellter-global-context-provider
   "Function that provides the current context for shellter.
 This function should return an instance of a subclass of `shellter-context'.
@@ -42,7 +45,12 @@ a valid context object."
       (with-current-buffer buffer
         (unless (eq major-mode 'eshell-mode)
           (eshell-mode)))))
-  (make-shellter-session :name name :buffer buffer))
+  (let ((session (make-shellter-session :name name :buffer buffer)))
+    ;; Set up buffer-local tracking and cleanup
+    (with-current-buffer buffer
+      (setq-local shellter--session session)
+      (add-hook 'kill-buffer-hook #'shellter--cleanup-session-on-kill nil t))
+    session))
 
 (defun shellter-session-live-p (session)
   "Check if SESSION's buffer is still alive."
@@ -112,9 +120,7 @@ system (like perspective.el) is available.")
 
 (cl-defmethod shellter-context-get-sessions ((context shellter-global-context))
   "Return all sessions in the global context."
-  (let ((sessions (oref context sessions)))
-    (shellter-context-clean-up-dead-sessions context sessions)
-    sessions))
+  (oref context sessions))
 
 (cl-defmethod shellter-context-add-session ((context shellter-global-context) session)
   "Add SESSION to the global context."
@@ -267,12 +273,6 @@ Generates names like 'eshell', 'eshell<2>', 'eshell<3>', etc.")
   (funcall shellter-naming-strategy-provider))
 
 ;;; Utility Functions
-
-(defun shellter-context-clean-up-dead-sessions (context sessions)
-  "Remove dead sessions from CONTEXT."
-  (dolist (session sessions)
-    (unless (shellter-session-live-p session)
-      (shellter-context-remove-session context session))))
 
 (defun shellter--make-unique-name (base-name existing-names)
   "Make BASE-NAME unique among EXISTING-NAMES by appending numbers."

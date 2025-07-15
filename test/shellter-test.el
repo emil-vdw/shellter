@@ -212,6 +212,70 @@
         (when (and created (shellter-session-buffer created))
           (kill-buffer (shellter-session-buffer created)))))))
 
+(ert-deftest shellter-test-auto-cleanup-on-kill ()
+  "Test that sessions are automatically removed when buffers are killed."
+  (shellter-test-with-context (make-instance 'shellter-global-context)
+    (let* ((context (shellter-get-current-context))
+           (session (shellter-create-session "test-cleanup")))
+      ;; Add session to context
+      (shellter-context-add-session context session)
+
+      ;; Verify session exists
+      (should (shellter-context-session-exists-p context "test-cleanup"))
+      (should (= 1 (length (shellter-context-get-sessions context))))
+
+      ;; Kill the buffer
+      (kill-buffer (shellter-session-buffer session))
+
+      ;; Session should be removed from context
+      (should-not (shellter-context-session-exists-p context "test-cleanup"))
+      (should (= 0 (length (shellter-context-get-sessions context)))))))
+
+(ert-deftest shellter-test-buffer-local-session ()
+  "Test that buffer-local session variable is set correctly."
+  (shellter-test-with-context (make-instance 'shellter-global-context)
+    (let* ((context (shellter-get-current-context))
+           (session (shellter-create-session "test-local")))
+      (unwind-protect
+          (with-current-buffer (shellter-session-buffer session)
+            ;; Check buffer-local variable is set
+            (should (boundp 'shellter--session))
+            (should (eq shellter--session session))
+            (should (shellter-session-p shellter--session))
+
+            ;; Check shellter-buffer-p works
+            (should (shellter-buffer-p)))
+        ;; Clean up
+        (kill-buffer (shellter-session-buffer session))))))
+
+(ert-deftest shellter-test-update-names-on-cleanup ()
+  "Test that remaining session names are updated when a session is killed."
+  (shellter-test-with-context (make-instance 'shellter-global-context)
+    (let* ((context (shellter-get-current-context))
+           (session1 (shellter-create-session "session1"))
+           (session2 (shellter-create-session "session2"))
+           (update-called nil))
+      (unwind-protect
+          (progn
+            ;; Add sessions
+            (shellter-context-add-session context session1)
+            (shellter-context-add-session context session2)
+
+            ;; Mock update-name to track if it's called
+            (cl-letf (((symbol-function 'shellter-update-name)
+                       (lambda (strategy session new-context)
+                         (setq update-called t)
+                         nil))) ; Return nil to indicate no name change
+
+              ;; Kill first session
+              (kill-buffer (shellter-session-buffer session1))
+
+              ;; Update should have been called for remaining session
+              (should update-called)))
+        ;; Clean up
+        (when (and session2 (shellter-session-live-p session2))
+          (kill-buffer (shellter-session-buffer session2)))))))
+
 ;; Clean up after all tests
 (add-hook 'ert-runner-reporter-run-ended-functions
           #'shellter-test-cleanup)
