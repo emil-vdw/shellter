@@ -106,10 +106,7 @@ This function is added to `kill-buffer-hook' for shellter buffers."
       (let* ((remaining-sessions (shellter-context-get-sessions context))
              (naming-context (shellter-get-current-naming-context)))
         (dolist (session remaining-sessions)
-          (when-let ((new-name (shellter-update-name naming-strategy
-                                                     session
-                                                     naming-context)))
-            (setf (shellter-session-name session) new-name)))))))
+          (shellter--naming-update-session-name session))))))
 
 (defun shellter-buffer-p (&optional buffer)
   "Return non-nil if BUFFER is a shellter session buffer.

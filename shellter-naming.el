@@ -155,10 +155,7 @@ Names follow the format: \"[<purpose>]: <last-command>@<current-dir>\" or
 To use this strategy with dynamic name updates:
 
   ;; Set the naming strategy provider
-  (setopt shellter-naming-strategy-provider #'shellter-command-naming-provider)
-
-  ;; Add hook for dynamic updates after each command
-  (add-hook 'eshell-post-command-hook #'shellter-command-naming--update-session-name)")
+  (setopt shellter-naming-strategy-provider #'shellter-command-naming-provider)")
 
 (defun shellter-command-naming--extract-command-name (command-object)
   "Extract a readable command name from COMMAND-OBJECT.
@@ -243,22 +240,24 @@ COMMAND-OBJECT is typically from `eshell-last-command-name' and has forms like:
             (unless (string= unique-name (shellter-session-name session))
               unique-name)))))))
 
-(defun shellter-command-naming--update-session-name ()
+(defun shellter--naming-update-session-name (&optional session)
   "Update current shellter session name after command execution.
 This function is meant to be added to `eshell-post-command-hook'."
-  (when (and (boundp 'shellter--session)
-             shellter--session
-             (shellter-session-p shellter--session))
-    (let* ((context (shellter-get-current-context))
-           (naming-strategy (shellter-get-naming-strategy))
-           (naming-context (shellter-get-current-naming-context)))
-      (when (cl-typep naming-strategy 'shellter-command-naming-strategy)
+  (if-let ((session (or session
+                        ;; If session is not passed, infer from current buffer
+                        (and (boundp 'shellter--session)
+                             (shellter-session-p shellter--session)
+                             shellter--session))))
+      (let* ((context (shellter-get-current-context))
+             (naming-strategy (shellter-get-naming-strategy))
+             (naming-context (shellter-get-current-naming-context)))
         (when-let ((new-name (shellter-update-name naming-strategy
                                                    shellter--session
                                                    naming-context)))
           (setf (shellter-session-name shellter--session) new-name)
           ;; Update the buffer name to match
-          (rename-buffer (format "*eshell:%s*" new-name) t))))))
+          (with-current-buffer (shellter-session-buffer session)
+            (rename-buffer (format "*eshell:%s*" new-name) t))))))
 
 ;;; Naming Strategy Providers
 
@@ -382,6 +381,8 @@ Optional PURPOSE describes the session's intended use."
   (let* ((strategy (shellter-get-naming-strategy))
          (context (shellter-get-current-naming-context base-name purpose)))
     (shellter-generate-suggestions strategy context)))
+
+(add-hook 'eshell-pre-command-hook #'shellter--naming-update-session-name)
 
 (provide 'shellter-naming)
 ;;; shellter-naming.el ends here
