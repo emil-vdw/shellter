@@ -98,7 +98,7 @@
      (persp-switch "temp-persp")
      (let ((session (shellter-create-session "temp-session")))
        (shellter-context-add-session context session)
-       
+
        ;; Verify session exists in global list
        (should (= 1 (length shellter-perspective--all-sessions)))
 
