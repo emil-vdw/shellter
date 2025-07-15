@@ -32,6 +32,10 @@ lint:
 checkdoc:
 	$(EASK) lint checkdoc
 
+.PHONY: fix
+fix:
+	find . -name "*.el" -not -path "./packages/*" -not -path "./.git/*" -exec $(EMACS) -batch -Q -l whitespace {} --eval "(setq-default indent-tabs-mode nil)" -f whitespace-cleanup -f save-buffer \;
+
 .PHONY: package
 package:
 	$(EASK) package
@@ -51,5 +55,6 @@ help:
 	@echo "  test      - Run tests"
 	@echo "  lint      - Run linters"
 	@echo "  checkdoc  - Check documentation strings"
+	@echo "  fix       - Run whitespace-cleanup on elisp files"
 	@echo "  package   - Build package"
 	@echo "  install-eask - Install Eask CLI tool"
