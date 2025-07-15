@@ -21,10 +21,6 @@
 ;; - Configurable session selection with consult support
 ;; - Configurable buffer switching behaviour
 ;;
-;; To use shellter, add the following to your Emacs configuration:
-;;
-;;   (require 'shellter)
-;;   (shellter-mode 1)
 ;;
 ;; Session Selection:
 ;;
@@ -41,23 +37,6 @@
 ;;           ;; Your custom implementation here
 ;;           ;; Should return the selected session name
 ;;           ))
-;;
-;; The consult integration (available in shellter-consult.el) provides:
-;; - Live preview of session buffers
-;; - Better completion UI with vertical candidates
-;;
-;; Buffer Switching Behaviour:
-;;
-;; You can customize how shellter switches to session buffers:
-;;
-;;   ;; Always switch in other window (default)
-;;   (setq shellter-switch-buffer-behaviour 'other-window)
-;;
-;;   ;; Always switch in same window
-;;   (setq shellter-switch-buffer-behaviour 'same-window)
-;;
-;;   ;; Smart switching - same window if in shellter buffer, otherwise other window
-;;   (setq shellter-switch-buffer-behaviour 'smart)
 
 ;;; Code:
 
