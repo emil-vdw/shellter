@@ -44,6 +44,7 @@
 (require 'eshell)
 
 (require 'shellter-context)
+(require 'shellter-naming)
 
 
 ;;; Customization
