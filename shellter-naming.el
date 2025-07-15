@@ -382,7 +382,7 @@ Optional PURPOSE describes the session's intended use."
          (context (shellter-get-current-naming-context base-name purpose)))
     (shellter-generate-suggestions strategy context)))
 
-(add-hook 'eshell-prepar-command-hook #'shellter--naming-update-session-name)
+(add-hook 'eshell-prepare-command-hook #'shellter--naming-update-session-name)
 
 (provide 'shellter-naming)
 ;;; shellter-naming.el ends here
