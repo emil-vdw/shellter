@@ -205,13 +205,52 @@
                   :project-root "/home/project"
                   :existing-names '("a" "b")
                   :purpose "testing"
+                  :current-name "old-name"
                   :metadata '((key . value)))))
     (should (equal (shellter-naming-context-base-name context) "base"))
     (should (equal (shellter-naming-context-directory context) "/tmp"))
     (should (equal (shellter-naming-context-project-root context) "/home/project"))
     (should (equal (shellter-naming-context-existing-names context) '("a" "b")))
     (should (equal (shellter-naming-context-purpose context) "testing"))
+    (should (equal (shellter-naming-context-current-name context) "old-name"))
     (should (equal (shellter-naming-context-metadata context) '((key . value))))))
+
+(ert-deftest shellter-naming-test-deduplication-excludes-self ()
+  "Test that session name updates don't deduplicate against themselves."
+  (let* ((buffer (generate-new-buffer "*test-eshell*"))
+         (session (shellter-create-session "ls@~/test" buffer))
+         (strategy (make-instance 'shellter-command-naming-strategy))
+         ;; Add the session to the global context
+         (context (shellter-get-current-context)))
+    (unwind-protect
+        (progn
+          (shellter-context-add-session context session)
+          (with-current-buffer buffer
+            ;; Set up eshell mode
+            (eshell-mode)
+            ;; Set the same command that would result in the same name
+            (setq eshell-last-command-name 'eshell/ls)
+            (let ((default-directory "~/test"))
+              ;; Get naming context with current session name
+              (let ((naming-context (shellter-get-current-naming-context nil nil "ls@~/test")))
+                ;; The name should remain unchanged, not become "ls@~/test<2>"
+                (should-not (shellter-update-name strategy session naming-context))))))
+      (shellter-context-remove-session context session)
+      (kill-buffer buffer))))
+
+(ert-deftest shellter-naming-test-make-unique-with-current ()
+  "Test that shellter--make-unique-name handles current-name correctly."
+  ;; When base-name equals current-name, return as-is
+  (should (equal (shellter--make-unique-name "test" '("test" "other") "test")
+                 "test"))
+
+  ;; When base-name differs from current-name, deduplicate normally
+  (should (equal (shellter--make-unique-name "test" '("test" "other") "different")
+                 "test<2>"))
+
+  ;; When current-name is nil, deduplicate normally
+  (should (equal (shellter--make-unique-name "test" '("test" "other") nil)
+                 "test<2>")))
 
 (provide 'shellter-naming-test)
 ;;; shellter-naming-test.el ends here

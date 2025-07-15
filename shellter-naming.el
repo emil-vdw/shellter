@@ -48,6 +48,8 @@ The function will be called with no arguments."
                   :documentation "List of existing session names in context.")
   (purpose nil :type (or null string)
            :documentation "Purpose or type of session being created.")
+  (current-name nil :type (or null string)
+                :documentation "Current name of the session being renamed (nil for new sessions).")
   (metadata nil :type list
             :documentation "Additional key-value pairs for extensibility."))
 
@@ -100,13 +102,9 @@ Generates names like 'eshell', 'eshell<2>', 'eshell<3>', etc.")
   (let* ((prefix (oref strategy prefix))
          (base-name (or (shellter-naming-context-base-name context) prefix))
          (existing (shellter-naming-context-existing-names context))
-         (name base-name)
-         (counter 2))
-    ;; Find first available name
-    (while (member name existing)
-      (setq name (format "%s<%d>" base-name counter))
-      (cl-incf counter))
-    name))
+         (current-name (shellter-naming-context-current-name context)))
+    ;; Use the utility function that handles current-name
+    (shellter--make-unique-name base-name existing current-name)))
 
 ;;; Directory-Based Naming Strategy
 
@@ -130,9 +128,10 @@ Generates names like 'eshell', 'eshell<2>', 'eshell<3>', etc.")
                                   (directory-file-name dir))))
                      (format "%s/%s" parent current))
                  (file-name-nondirectory (directory-file-name dir))))
-         (existing (shellter-naming-context-existing-names context)))
+         (existing (shellter-naming-context-existing-names context))
+         (current-name (shellter-naming-context-current-name context)))
     ;; Make unique if necessary
-    (shellter--make-unique-name name existing)))
+    (shellter--make-unique-name name existing current-name)))
 
 (cl-defmethod shellter-update-name ((strategy shellter-directory-naming-strategy)
                                     session new-context)
@@ -217,9 +216,10 @@ COMMAND-OBJECT is typically from `eshell-last-command-name' and has forms like:
                      (shellter-command-naming--get-relative-directory)))
          (command (oref strategy fallback-command))
          (existing (shellter-naming-context-existing-names context))
+         (current-name (shellter-naming-context-current-name context))
          (base-name (shellter-command-naming--format-name purpose command directory)))
     ;; Make unique if necessary
-    (shellter--make-unique-name base-name existing)))
+    (shellter--make-unique-name base-name existing current-name)))
 
 (cl-defmethod shellter-update-name ((strategy shellter-command-naming-strategy)
                                     session new-context)
@@ -236,7 +236,8 @@ COMMAND-OBJECT is typically from `eshell-last-command-name' and has forms like:
                  (purpose (shellter-session-purpose session))
                  (new-name (shellter-command-naming--format-name purpose command directory))
                  (existing (shellter-naming-context-existing-names new-context))
-                 (unique-name (shellter--make-unique-name new-name existing)))
+                 (current-name (shellter-naming-context-current-name new-context))
+                 (unique-name (shellter--make-unique-name new-name existing current-name)))
             (unless (string= unique-name (shellter-session-name session))
               unique-name)))))))
 
@@ -250,11 +251,15 @@ This function is meant to be added to `eshell-post-command-hook'."
                              shellter--session))))
       (let* ((context (shellter-get-current-context))
              (naming-strategy (shellter-get-naming-strategy))
-             (naming-context (shellter-get-current-naming-context)))
+             ;; Pass the current session name to the naming context
+             (naming-context (shellter-get-current-naming-context
+                              nil
+                              nil
+                              (shellter-session-name session))))
         (when-let ((new-name (shellter-update-name naming-strategy
-                                                   shellter--session
+                                                   session
                                                    naming-context)))
-          (setf (shellter-session-name shellter--session) new-name)
+          (setf (shellter-session-name session) new-name)
           ;; Update the buffer name to match
           (with-current-buffer (shellter-session-buffer session)
             (rename-buffer (format "*eshell:%s*" new-name) t))))))
@@ -289,14 +294,18 @@ This function is meant to be added to `eshell-post-command-hook'."
 
 ;;; Utility Functions
 
-(defun shellter--make-unique-name (base-name existing-names)
-  "Make BASE-NAME unique among EXISTING-NAMES by appending numbers."
-  (let ((name base-name)
-        (counter 2))
-    (while (member name existing-names)
-      (setq name (format "%s<%d>" base-name counter))
-      (cl-incf counter))
-    name))
+(defun shellter--make-unique-name (base-name existing-names &optional current-name)
+  "Make BASE-NAME unique among EXISTING-NAMES by appending numbers.
+If CURRENT-NAME is provided and BASE-NAME equals CURRENT-NAME, return it as-is."
+  ;; If the base name is the same as the current name, no need to make it unique
+  (if (and current-name (string= base-name current-name))
+      base-name
+    (let ((name base-name)
+          (counter 2))
+      (while (member name existing-names)
+        (setq name (format "%s<%d>" base-name counter))
+        (cl-incf counter))
+      name)))
 
 (cl-defun shellter-create-naming-context (&key
                                           base-name
@@ -304,6 +313,7 @@ This function is meant to be added to `eshell-post-command-hook'."
                                           project-root
                                           (existing-names nil)
                                           purpose
+                                          current-name
                                           (metadata nil))
   "Create a naming context with the given parameters.
 
@@ -312,6 +322,7 @@ DIRECTORY is the current working directory.
 PROJECT-ROOT is the root directory of the current project.
 EXISTING-NAMES is a list of already taken session names.
 PURPOSE describes the intended use of the session.
+CURRENT-NAME is the current name when renaming a session.
 METADATA is an alist of additional key-value pairs."
   (make-shellter-naming-context
    :base-name base-name
@@ -319,11 +330,13 @@ METADATA is an alist of additional key-value pairs."
    :project-root project-root
    :existing-names existing-names
    :purpose purpose
+   :current-name current-name
    :metadata metadata))
 
-(defun shellter-get-current-naming-context (&optional base-name purpose)
+(defun shellter-get-current-naming-context (&optional base-name purpose current-name)
   "Get naming context based on current environment.
-Optional BASE-NAME and PURPOSE override detected values."
+Optional BASE-NAME and PURPOSE override detected values.
+Optional CURRENT-NAME is the current session name being renamed."
   (let* ((context (shellter-get-current-context))
          (existing-names (mapcar #'shellter-session-name
                                 (shellter-context-get-sessions context)))
@@ -351,7 +364,8 @@ Optional BASE-NAME and PURPOSE override detected values."
      :directory default-directory
      :project-root project-root
      :existing-names existing-names
-     :purpose purpose)))
+     :purpose purpose
+     :current-name current-name)))
 
 (defun shellter--name-ensure-unique (name existing-names)
   "Return a version of the shellter session NAME unique in EXISTING-NAMES."
@@ -370,7 +384,7 @@ Optional BASE-NAME provides a hint for the name.
 Optional PURPOSE describes the session's intended use."
   (let* ((strategy (shellter-get-naming-strategy))
          (context (shellter-get-current-naming-context base-name purpose)))
-    (shellter--name-ensure-unique
+    (shellter--make-unique-name
      (shellter-generate-name strategy context)
      (shellter-naming-context-existing-names context))))
 
