@@ -1,16 +1,18 @@
-(workspace "shellter-monorepo"
-           "0.1.0"
-           "Shellter monorepo workspace")
+(package "shellter"
+         "0.1.0"
+         "Enhanced eshell session management for Emacs")
 
 (website-url "https://github.com/emil-vdw/shellter")
+(keywords "convenience" "terminals" "eshell")
+
+(package-file "shellter.el")
+
+(script "test" "eask test ert test/*.el")
 
 (source "gnu")
 (source "melpa")
 
-;; Define the packages in the workspace
-(package "packages/shellter")
-(package "packages/shellter-perspective")
-(package "packages/shellter-consult")
+(depends-on "emacs" "26.1")
 
 (development
  (depends-on "ert-runner")

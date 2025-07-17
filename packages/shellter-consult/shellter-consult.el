@@ -3,8 +3,9 @@
 ;; Copyright (C) 2025 Emil van der Westhuizen
 
 ;; Author: Emil van der Westhuizen <emilvdw@gmail.com>
+;; Version: 0.1.0
 ;; Package-Requires: ((emacs "26.1") (shellter "0.1.0") (consult "0.35"))
-;; Keywords: convenience, terminals, perspective
+;; Keywords: convenience, terminals, consult
 ;; URL: https://github.com/emil-vdw/shellter
 
 ;;; Commentary:

@@ -1,11 +1,11 @@
-;;; shellter.el --- Perspective-aware eshell session management -*- lexical-binding: t -*-
+;;; shellter.el --- Enhanced eshell session management for Emacs -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2025 Emil van der Westhuizen
 
 ;; Author: Emil van der Westhuizen <emilvdw@gmail.com>
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "26.1") (perspective "2.8"))
-;; Keywords: convenience, terminals, perspective
+;; Package-Requires: ((emacs "26.1"))
+;; Keywords: convenience, terminals, eshell
 ;; URL: https://github.com/emil-vdw/shellter
 
 ;;; Commentary:

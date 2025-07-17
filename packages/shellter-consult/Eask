@@ -1,0 +1,27 @@
+(package "shellter-consult"
+         "0.1.0"
+         "Consult integration for shellter")
+
+(website-url "https://github.com/emil-vdw/shellter")
+(keywords "convenience" "terminals" "consult")
+
+(package-file "shellter-consult.el")
+
+(script "test" "eask test ert test/*.el")
+
+(source "gnu")
+(source "melpa")
+
+;; Add load path for local shellter package
+(load-paths "../shellter")
+
+(depends-on "emacs" "26.1")
+(depends-on "consult" "0.35")
+
+(development
+ (depends-on "ert-runner")
+ (depends-on "undercover")
+ (depends-on "package-lint")
+ (depends-on "elisp-lint"))
+
+(setq network-security-level 'low)  ; For CI environments
