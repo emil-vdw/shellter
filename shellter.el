@@ -93,21 +93,6 @@ Available options:
 (defvar-local shellter--session nil
   "The shellter session associated with this buffer.")
 
-(defun shellter--cleanup-session-on-kill ()
-  "Clean up shellter session when its buffer is killed.
-This function is added to `kill-buffer-hook' for shellter buffers."
-  (when shellter--session
-    (let* ((context (shellter-get-current-context))
-           (naming-strategy (shellter-get-naming-strategy)))
-      ;; Remove the session from the context
-      (shellter-context-remove-session context shellter--session)
-
-      ;; Update names of remaining sessions
-      (let* ((remaining-sessions (shellter-context-get-sessions context))
-             (naming-context (shellter-get-current-naming-context)))
-        (dolist (session remaining-sessions)
-          (shellter--naming-update-session-name session))))))
-
 (defun shellter-buffer-p (&optional buffer)
   "Return non-nil if BUFFER is a shellter session buffer.
 BUFFER defaults to the current buffer."

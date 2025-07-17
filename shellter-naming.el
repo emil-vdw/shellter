@@ -396,6 +396,17 @@ Optional PURPOSE describes the session's intended use."
          (context (shellter-get-current-naming-context base-name purpose)))
     (shellter-generate-suggestions strategy context)))
 
+(defun shellter-naming--on-session-cleanup (context session)
+  "Update remaining session names after SESSION cleanup in CONTEXT.
+This function is added to `shellter-session-cleanup-hook' to ensure
+that session names are updated appropriately when a session is removed."
+  (let* ((remaining-sessions (shellter-context-get-sessions context))
+         (naming-context (shellter-get-current-naming-context)))
+    (dolist (session remaining-sessions)
+      (shellter--naming-update-session-name session))))
+
+;; Hook into session lifecycle
+(add-hook 'shellter-session-cleanup-hook #'shellter-naming--on-session-cleanup)
 (add-hook 'eshell-prepare-command-hook #'shellter--naming-update-session-name)
 
 (provide 'shellter-naming)

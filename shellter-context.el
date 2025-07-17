@@ -4,6 +4,11 @@
 ;; This file defines the generic context API for shellter, allowing
 ;; users to plug in different context management implementations.
 ;; The default implementation provides a simple global context.
+;;
+;; Session Lifecycle:
+;; Sessions are created with `shellter-create-session' and automatically
+;; register cleanup hooks. When a session buffer is killed, the cleanup
+;; function removes it from the context and runs `shellter-session-cleanup-hook'.
 
 ;;; Code:
 
@@ -12,8 +17,21 @@
 ;; Declare function to suppress package-lint warning - we handle version compatibility dynamically
 (declare-function project-root "project" (project))
 
-;; Forward declare cleanup function from shellter.el
-(declare-function shellter--cleanup-session-on-kill "shellter" ())
+;;; Session Lifecycle Hooks
+
+(defvar shellter-session-cleanup-hook nil
+  "Hook run when a shellter session is being cleaned up.
+Functions in this hook are called with two arguments:
+  - CONTEXT: The shellter context object
+  - SESSION: The shellter session being cleaned up
+This hook is run after the session has been removed from the context.")
+
+(defvar shellter-session-created-hook nil
+  "Hook run when a shellter session is created.
+Functions in this hook are called with two arguments:
+  - CONTEXT: The shellter context object
+  - SESSION: The newly created shellter session
+This hook is run after the session has been added to the context.")
 
 (defcustom shellter-context-provider #'shellter-global-context-provider
   "Function that provides the current context for shellter.
@@ -36,6 +54,17 @@ a valid context object."
           :documentation "The eshell buffer object associated with this session.")
   (purpose nil :type (or null string)
            :documentation "The purpose associated with this session, eg. python repl."))
+
+(defun shellter--cleanup-session-on-kill ()
+  "Clean up shellter session when its buffer is killed.
+This function is added to `kill-buffer-hook' for shellter buffers."
+  (when (and (boundp 'shellter--session) shellter--session)
+    (let ((context (shellter-get-current-context))
+          (session shellter--session))
+      ;; Remove the session from the context
+      (shellter-context-remove-session context session)
+      ;; Run cleanup hooks with context and session
+      (run-hook-with-args 'shellter-session-cleanup-hook context session))))
 
 (defun shellter-create-session (name &optional buffer)
   "Create a new shellter session with NAME and optional BUFFER."
