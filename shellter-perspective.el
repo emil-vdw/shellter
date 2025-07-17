@@ -92,6 +92,62 @@ workspace-specific eshell session management.")
   ;; when it's killed, so we don't need to do anything else here
   )
 
+;;; Perspective Hooks
+
+(defun shellter-perspective--cleanup-on-persp-kill ()
+  "Clean up shellter sessions when a perspective is killed.
+This function is run by `persp-killed-hook' with the perspective
+to be killed as the current perspective."
+  (let ((sessions (shellter-context-get-sessions (shellter-perspective-context-provider)))
+        (current-persp-name (persp-current-name)))
+    ;; Kill shellter buffers that exist only in this perspective
+    (dolist (session sessions)
+      (when-let ((buffer (shellter-session-buffer session)))
+        (when (buffer-live-p buffer)
+          ;; Check if buffer exists in any other perspective
+          (let ((buffer-in-other-persp nil))
+            (dolist (persp-name (persp-names))
+              (unless (string= persp-name current-persp-name)
+                (when (member buffer (persp-buffers (gethash persp-name (perspectives-hash))))
+                  (setq buffer-in-other-persp t))))
+            ;; Only kill if not in any other perspective
+            (unless buffer-in-other-persp
+              (kill-buffer buffer))))))
+    ;; Clean up any dead sessions from the global list
+    (setq shellter-perspective--all-sessions
+          (cl-remove-if-not
+           (lambda (session)
+             (and (shellter-session-buffer session)
+                  (buffer-live-p (shellter-session-buffer session))))
+           shellter-perspective--all-sessions))))
+
+(defun shellter-perspective--setup-hooks ()
+  "Set up hooks for perspective integration."
+  (add-hook 'persp-killed-hook #'shellter-perspective--cleanup-on-persp-kill))
+
+(defun shellter-perspective--teardown-hooks ()
+  "Remove hooks for perspective integration."
+  (remove-hook 'persp-killed-hook #'shellter-perspective--cleanup-on-persp-kill))
+
+;;; Variable Watcher
+
+(defun shellter-perspective--context-provider-watcher (_symbol newval _op _where)
+  "Watch for changes to `shellter-context-provider'.
+When the provider is set to perspective context, set up hooks.
+When switching away, tear down hooks."
+  (cond
+   ;; Setting to perspective provider
+   ((eq newval #'shellter-perspective-context-provider)
+    (shellter-perspective--setup-hooks))
+   ;; Switching away from perspective provider - check if we were using it
+   ((and (boundp 'shellter-context-provider)
+         (eq shellter-context-provider #'shellter-perspective-context-provider))
+    (shellter-perspective--teardown-hooks))))
+
+;; Add the watcher when this file is loaded
+(add-variable-watcher 'shellter-context-provider
+                      #'shellter-perspective--context-provider-watcher)
+
 ;;; Provider Function
 
 (defvar shellter-perspective--context-instance nil
