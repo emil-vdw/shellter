@@ -88,6 +88,22 @@ Available options:
                  (const :tag "Smart" smart))
   :group 'shellter)
 
+;;; Minor Mode
+
+;;;###autoload
+(define-minor-mode shellter-mode
+  "Enable shellter session management with automatic naming."
+  :global t
+  :group 'shellter
+  (if shellter-mode
+      (shellter-naming-setup-hooks)
+    (shellter-naming-teardown-hooks)))
+
+(defun shellter--ensure-mode ()
+  "Ensure shellter-mode is active."
+  (unless shellter-mode
+    (shellter-mode 1)))
+
 ;;; Utility Functions
 
 (defvar-local shellter--session nil
@@ -149,6 +165,7 @@ Optional PURPOSE is set on new sessions."
 With prefix ARG, always create a new session.
 Optional PURPOSE can be provided when called programmatically."
   (interactive "P")
+  (shellter--ensure-mode)
 
   ;; Clean up dead sessions first
   (let* ((context (shellter-get-current-context))

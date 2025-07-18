@@ -154,7 +154,9 @@ system (like perspective.el) is available.")
 (cl-defmethod shellter-context-add-session ((context shellter-global-context) session)
   "Add SESSION to the global context."
   (oset context sessions
-        (cons session (oref context sessions))))
+        (cons session (oref context sessions)))
+  ;; Run the session created hook
+  (run-hook-with-args 'shellter-session-created-hook context session))
 
 (cl-defmethod shellter-context-remove-session ((context shellter-global-context) session)
   "Remove SESSION from the global context."

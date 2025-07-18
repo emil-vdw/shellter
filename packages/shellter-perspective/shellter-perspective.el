@@ -79,7 +79,10 @@ workspace-specific eshell session management.")
 
     ;; Add the buffer to the current perspective
     (when (and buffer (buffer-live-p buffer))
-      (persp-add-buffer buffer))))
+      (persp-add-buffer buffer))
+
+    ;; Run the session created hook
+    (run-hook-with-args 'shellter-session-created-hook context session)))
 
 (cl-defmethod shellter-context-remove-session ((context shellter-perspective-context) session)
   "Remove SESSION from all perspectives."
