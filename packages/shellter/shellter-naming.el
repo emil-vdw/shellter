@@ -407,7 +407,13 @@ that session names are updated appropriately when a session is removed."
 
 ;; Hook into session lifecycle
 (add-hook 'shellter-session-cleanup-hook #'shellter-naming--on-session-cleanup)
+
 (add-hook 'eshell-prepare-command-hook #'shellter--naming-update-session-name)
+;;; We need to also hook onto post command hook since the directory change
+;;; caused by "cd" commands only is not reflected `prepare-command-hook'.
+;;; In order to give naming strategy providers a chance to take into account
+;;; the current directory, we also use this hook.
+(add-hook 'eshell-post-command-hook #'shellter--naming-update-session-name)
 
 (provide 'shellter-naming)
 ;;; shellter-naming.el ends here
