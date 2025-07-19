@@ -38,10 +38,9 @@
 
 (defun shellter-test-cleanup ()
   "Clean up after tests."
-  ;; Kill any test eshell buffers
+  ;; Kill any shellter session buffers
   (dolist (buffer (buffer-list))
-    (when (and (buffer-name buffer)
-               (string-match-p "\\*eshell:" (buffer-name buffer)))
+    (when (shellter-buffer-p buffer)
       (ignore-errors (kill-buffer buffer)))))
 
 (provide 'test-helper)

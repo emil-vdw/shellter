@@ -69,7 +69,7 @@ This function is added to `kill-buffer-hook' for shellter buffers."
 (defun shellter-create-session (name &optional buffer)
   "Create a new shellter session with NAME and optional BUFFER."
   (unless buffer
-    (let ((buffer-name (format "*eshell:%s*" name)))
+    (let ((buffer-name (format "*%s*" name)))
       (setq buffer (get-buffer-create buffer-name))
       (with-current-buffer buffer
         (unless (eq major-mode 'eshell-mode)

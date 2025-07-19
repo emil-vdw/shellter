@@ -113,14 +113,15 @@ Generates names like 'eshell', 'eshell<2>', 'eshell<3>', etc.")
   (let* ((dir (or (shellter-naming-context-directory context)
                   default-directory))
          (include-parent (oref strategy include-parent))
-         (name (if include-parent
-                   (let ((parent (file-name-nondirectory
-                                 (directory-file-name
-                                  (file-name-directory dir))))
-                         (current (file-name-nondirectory
-                                  (directory-file-name dir))))
-                     (format "%s/%s" parent current))
-                 (file-name-nondirectory (directory-file-name dir))))
+         (dir-name (if include-parent
+                       (let ((parent (file-name-nondirectory
+                                     (directory-file-name
+                                      (file-name-directory dir))))
+                             (current (file-name-nondirectory
+                                      (directory-file-name dir))))
+                         (format "%s/%s" parent current))
+                     (file-name-nondirectory (directory-file-name dir))))
+         (name (format "eshell@%s" dir-name))
          (existing (shellter-naming-context-existing-names context))
          (current-name (shellter-naming-context-current-name context)))
     ;; Make unique if necessary
@@ -255,7 +256,7 @@ This function is meant to be added to `eshell-post-command-hook'."
           (setf (shellter-session-name session) new-name)
           ;; Update the buffer name to match
           (with-current-buffer (shellter-session-buffer session)
-            (rename-buffer (format "*eshell:%s*" new-name) t))))))
+            (rename-buffer (format "*%s*" new-name) t))))))
 
 ;;; Naming Strategy Providers
 
