@@ -81,13 +81,6 @@ Returns the new name, or nil if no update is needed."
   ;; Default: no automatic updates
   nil)
 
-(cl-defgeneric shellter-generate-suggestions (strategy context)
-  "Generate a list of name suggestions using STRATEGY and CONTEXT.
-CONTEXT is a `shellter-naming-context' struct.
-Returns a list of suggested names for interactive completion."
-  ;; Default: just generate one suggestion
-  (list (shellter-generate-name strategy context)))
-
 ;;; Default Simple Naming Strategy
 
 (defclass shellter-simple-naming-strategy (shellter-naming-strategy)
@@ -387,14 +380,6 @@ Optional PURPOSE describes the session's intended use."
     (shellter--make-unique-name
      (shellter-generate-name strategy context)
      (shellter-naming-context-existing-names context))))
-
-(defun shellter-suggest-session-names (&optional base-name purpose)
-  "Get name suggestions from the current naming strategy.
-Optional BASE-NAME provides a hint for the name.
-Optional PURPOSE describes the session's intended use."
-  (let* ((strategy (shellter-get-naming-strategy))
-         (context (shellter-get-current-naming-context base-name purpose)))
-    (shellter-generate-suggestions strategy context)))
 
 (defun shellter-naming--on-session-cleanup (context session)
   "Update remaining session names after SESSION cleanup in CONTEXT.
