@@ -159,7 +159,7 @@
          (context (shellter-create-naming-context
                    :directory "/home/user/projects/myapp"
                    :existing-names '())))
-    (should (equal (shellter-generate-name strategy context) "myapp")))
+    (should (equal (shellter-generate-name strategy context) "eshell@myapp")))
 
   ;; Test with parent directory
   (let* ((strategy (make-instance 'shellter-directory-naming-strategy
@@ -167,12 +167,12 @@
          (context (shellter-create-naming-context
                    :directory "/home/user/projects/myapp"
                    :existing-names '())))
-    (should (equal (shellter-generate-name strategy context) "projects/myapp"))))
+    (should (equal (shellter-generate-name strategy context) "eshell@projects/myapp"))))
 
 (ert-deftest shellter-directory-naming-test-update ()
   "Test directory name updates."
   (let* ((buffer (generate-new-buffer "*test-eshell*"))
-         (session (shellter-create-session "old" buffer))  ; Use name that matches directory
+         (session (shellter-create-session "eshell@old" buffer))  ; Use name that matches directory
          (strategy (make-instance 'shellter-directory-naming-strategy)))
     (unwind-protect
         (progn
@@ -186,7 +186,7 @@
             ;; Same directory, no update needed since name already matches
             (should-not (shellter-update-name strategy session old-context))
             ;; Different directory, should update
-            (should (equal (shellter-update-name strategy session new-context) "new"))))
+            (should (equal (shellter-update-name strategy session new-context) "eshell@new"))))
       (kill-buffer buffer))))
 
 ;;; Utility function tests
