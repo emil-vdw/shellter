@@ -174,12 +174,12 @@ Optional PURPOSE can be provided when called programmatically."
           (cond
            ;; With prefix arg, always create new
            (arg
-            (let ((name (shellter-generate-session-name)))
+            (let ((name (shellter-generate-session-name nil purpose)))
               (shellter-get-or-create-session context name purpose)))
 
            ;; No sessions exist, create one
            ((null sessions)
-            (let ((name (shellter-generate-session-name)))
+            (let ((name (shellter-generate-session-name nil purpose)))
               (shellter-get-or-create-session context name purpose)))
 
            ;; Single session exists

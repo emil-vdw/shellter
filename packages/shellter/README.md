@@ -31,7 +31,6 @@ Basic commands:
 
 - `shellter-switch` - Switch to or create a named eshell session
 - `shellter-rename-session` - Rename the current session
-- `shellter-set-purpose` - Set a descriptive purpose for the current session
 
 ## Configuration
 
