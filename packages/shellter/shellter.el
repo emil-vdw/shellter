@@ -10,33 +10,9 @@
 
 ;;; Commentary:
 
-;; Shellter provides perspective-aware eshell session management for Emacs.
+;; Shellter provides context-aware eshell session management for Emacs.
 ;; It integrates with perspective.el to provide better eshell workflow when
 ;; working with multiple projects.
-;;
-;; Features:
-;; - Perspective-aware eshell invocation
-;; - Named eshell sessions within perspectives
-;; - Easy switching between multiple eshell instances
-;; - Configurable session selection with consult support
-;; - Configurable buffer switching behaviour
-;;
-;;
-;; Session Selection:
-;;
-;; By default, shellter uses `completing-read' for session selection.
-;; You can customize this behavior by setting `shellter-read-session-function':
-;;
-;;   ;; Use consult for enhanced session selection with preview
-;;   (require 'shellter-consult)
-;;   (setq shellter-read-session-function #'shellter-read-session-consult)
-;;
-;;   ;; Or provide your own function
-;;   (setq shellter-read-session-function
-;;         (lambda (sessions &optional prompt initial-input)
-;;           ;; Your custom implementation here
-;;           ;; Should return the selected session name
-;;           ))
 
 ;;; Code:
 
@@ -55,14 +31,11 @@
   :prefix "shellter-")
 
 (defcustom shellter-read-session-function #'shellter-read-session-default
-  "Function to use for reading session names.
-The function should accept the following arguments:
+  "Function to use for selecting a session.
+The function should accept one argument:
   - SESSIONS: A list of `shellter-session' structs
-  - PROMPT: Optional prompt string (defaults to \"Shellter session: \")
-  - INITIAL-INPUT: Optional initial input
 
-The function should return the selected session name as a string.
-Non-matching input should be allowed to create new sessions.
+The function should return the selected session.
 
 Built-in options include:
   - `shellter-read-session-default': Uses `completing-read'
@@ -100,14 +73,18 @@ Available options:
     (shellter-naming-teardown-hooks)))
 
 (defun shellter--ensure-mode ()
-  "Ensure shellter-mode is active."
+  "Ensure `shellter-mode' is active by enabling it if necessary.
+This function is used internally to guard shellter commands and
+automatically enables the mode rather than signaling an error."
   (unless shellter-mode
     (shellter-mode 1)))
 
 ;;; Utility Functions
 
 (defvar-local shellter--session nil
-  "The shellter session associated with this buffer.")
+  "The shellter session associated with this buffer.
+This variable holds a `shellter-session' struct that tracks
+the session's name, buffer reference, and optional purpose.")
 
 (defun shellter-buffer-p (&optional buffer)
   "Return non-nil if BUFFER is a shellter session buffer.
@@ -133,23 +110,27 @@ The behaviour is controlled by `shellter-switch-buffer-behaviour'."
            (switch-to-buffer-other-window buffer)))))))
 
 (defun shellter-read-session-default (sessions &optional prompt initial-input)
-  "Read a session name from SESSIONS using `completing-read'.
-PROMPT defaults to \"Shellter session: \".
-INITIAL-INPUT is passed to `completing-read'.
-Returns the selected name. Non-matching input is allowed."
-  (let ((names (mapcar #'shellter-session-name sessions))
-        (prompt (or prompt "Shellter session: ")))
-    (completing-read prompt names nil nil initial-input)))
+  "Read a session from SESSIONS using `completing-read'."
+  (let* ((completion-table
+          (mapcar (lambda (session)
+                    (cons (shellter-session-name session) session))
+                  sessions))
+         (selected-name (completing-read "Shellter session: " completion-table))
+         (selected-session (cdr (assoc selected-name completion-table))))
+    selected-session))
 
 (defun shellter-read-session (sessions)
-  "Read a session name from SESSIONS using configured function.
+  "Read a session from SESSIONS using configured function.
 Returns the selected name. Non-matching input is allowed."
   (funcall shellter-read-session-function sessions))
 
 
 (defun shellter-get-or-create-session (context name &optional purpose)
   "Get existing session by NAME or create new one in CONTEXT.
-Optional PURPOSE is set on new sessions."
+If a session with NAME exists in CONTEXT, return it.
+Otherwise, create a new session and add it to CONTEXT.
+Optional PURPOSE is set on newly created sessions.
+Returns the `shellter-session' struct."
   (let ((session (shellter-context-find-session context name)))
     (unless session
       ;; Create new session with the given name, not auto-generated
@@ -193,8 +174,7 @@ Optional PURPOSE can be provided when called programmatically."
 
            ;; Multiple sessions, prompt for selection
            (t
-            (let ((name (shellter-read-session sessions)))
-              (shellter-get-or-create-session context name purpose))))))
+            (shellter-read-session sessions)))))
 
     ;; Switch to the session if we have one
     (when session
