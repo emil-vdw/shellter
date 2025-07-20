@@ -58,21 +58,20 @@ This function provides enhanced features when consult is available:
               ('preview
                ;; Preview the session buffer
                (when cand
-                 (when-let* ((session (cl-find cand sessions
-                                               :key #'shellter-session-name
-                                               :test #'string=))
-                             (buffer (shellter-session-buffer session)))
+                 (when-let* ((buffer (shellter-session-buffer cand)))
                    (when (buffer-live-p buffer)
                      ;; Use consult's buffer display mechanism with our chosen function
                      (let ((consult--buffer-display display-fn))
                        (consult--buffer-action buffer))))))))))
+
     (consult--read table
                    :prompt prompt
                    :category 'shellter-session
                    :require-match t
                    :state state
                    :preview-key 'any
-                   :sort nil)))
+                   :sort nil
+                   :lookup #'consult--lookup-cdr)))
 
 (provide 'shellter-consult)
 
